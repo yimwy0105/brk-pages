@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>플랫폼기획팀 개발 업무 협조전 프로세스</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 48px 40px 36px; text-align: center; }
+  .header h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .header p { font-size: 15px; color: #94a3b8; }
+
+  .legend-bar { display: flex; justify-content: center; gap: 24px; padding: 20px 40px; background: #fff; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #475569; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+
+  .container { max-width: 1100px; margin: 40px auto; padding: 0 24px 60px; }
+
+  /* Phase heading */
+  .phase-heading { width: 100%; max-width: 820px; margin: 24px auto 20px; padding: 14px 24px; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #fff; border-radius: 12px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 14px rgba(30,41,59,0.18); }
+  .phase-heading .phase-num { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+  .phase-heading .phase-text h2 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+  .phase-heading .phase-text p { font-size: 13px; color: #cbd5e1; }
+
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .step-group { width: 100%; max-width: 820px; position: relative; }
+
+  .connector { display: flex; flex-direction: column; align-items: center; height: 44px; }
+  .connector .line { width: 2px; flex: 1; background: #cbd5e1; }
+  .connector .arrow { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid #cbd5e1; }
+
+  .step-card { background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+  .step-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.10); }
+
+  .step-top { display: flex; align-items: stretch; }
+  .step-number { width: 64px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .step-body { flex: 1; padding: 20px 24px; }
+  .step-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .step-desc { font-size: 13.5px; color: #64748b; line-height: 1.65; }
+
+  .step-meta { display: flex; gap: 12px; padding: 12px 24px 12px 88px; border-top: 1px solid #f1f5f9; background: #fafbfc; flex-wrap: wrap; }
+  .meta-tag { font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 600; }
+
+  .step-checklist { margin-top: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border-left: 3px solid #e2e8f0; }
+  .step-checklist .cl-title { font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .step-checklist ul { list-style: none; padding: 0; margin: 0; }
+  .step-checklist li { font-size: 12.5px; color: #64748b; padding: 2px 0 2px 18px; position: relative; line-height: 1.5; }
+  .step-checklist li::before { content: '✓'; position: absolute; left: 0; color: #10b981; font-weight: 700; font-size: 12px; }
+
+  .step-note { margin-top: 10px; padding: 8px 12px; background: #fef3c7; border-radius: 8px; font-size: 12.5px; color: #92400e; line-height: 1.5; }
+  .step-note strong { font-weight: 700; }
+
+  /* Role colors */
+  .role-requester { background: #dbeafe; color: #2563eb; }
+  .role-mkt { background: #fce7f3; color: #be185d; }
+  .role-hs { background: #d1fae5; color: #047857; }
+  .role-brapp { background: #ede9fe; color: #6d28d9; }
+  .role-plat { background: #fef3c7; color: #b45309; }
+  .role-platlead { background: #fee2e2; color: #b91c1c; }
+  .role-exec { background: #f1f5f9; color: #475569; }
+
+  .accent-1 .step-number { background: #3b82f6; }
+  .accent-2 .step-number { background: #8b5cf6; }
+  .accent-3 .step-number { background: #f59e0b; }
+  .accent-4 .step-number { background: #10b981; }
+  .accent-5 .step-number { background: #ec4899; }
+  .accent-6 .step-number { background: #06b6d4; }
+
+  /* Decision / branch */
+  .decision { display: flex; align-items: center; justify-content: center; gap: 0; width: 100%; max-width: 820px; }
+  .decision-diamond { width: 180px; height: 90px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #92400e; flex-shrink: 0; text-align: center; padding: 0 10px; }
+  .decision-branch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #64748b; }
+  .decision-branch.yes { color: #16a34a; font-weight: 600; }
+  .decision-branch.no { color: #dc2626; font-weight: 600; }
+  .branch-line { width: 40px; height: 2px; background: #cbd5e1; }
+
+  /* Marketing parallel callout box */
+  .parallel-box { width: 100%; max-width: 820px; background: #fdf2f8; border: 2px dashed #ec4899; border-radius: 12px; padding: 16px 20px; margin-top: 14px; display: flex; align-items: flex-start; gap: 14px; }
+  .parallel-icon { width: 36px; height: 36px; border-radius: 50%; background: #ec4899; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 15px; }
+  .parallel-text { font-size: 13.5px; color: #831843; line-height: 1.6; }
+  .parallel-text strong { color: #be185d; }
+
+  /* Approval line table */
+  .approval-section { width: 100%; max-width: 820px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; margin-top: 10px; }
+  .approval-header { background: linear-gradient(135deg, #0f3460 0%, #16213e 100%); color: #fff; padding: 16px 24px; font-size: 16px; font-weight: 700; }
+  .approval-table { width: 100%; border-collapse: collapse; }
+  .approval-table th, .approval-table td { border: 1px solid #e2e8f0; padding: 14px 16px; text-align: center; font-size: 13.5px; }
+  .approval-table th { background: #f8fafc; color: #475569; font-weight: 700; font-size: 12.5px; }
+  .approval-table td { color: #1e293b; }
+  .approval-table td.role-col { font-weight: 700; color: #0f3460; background: #f1f5f9; width: 90px; }
+  .approval-table td .ppl { font-size: 12.5px; color: #64748b; display: block; margin-top: 3px; }
+
+  /* Form field display */
+  .form-field-box { margin-top: 12px; padding: 14px 16px; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 8px; }
+  .form-field-box .ff-title { font-size: 13px; font-weight: 700; color: #0c4a6e; margin-bottom: 8px; }
+  .form-field-box ul { list-style: none; padding: 0; margin: 0; }
+  .form-field-box li { font-size: 12.5px; color: #0c4a6e; padding: 3px 0 3px 18px; position: relative; line-height: 1.55; }
+  .form-field-box li::before { content: '▸'; position: absolute; left: 0; color: #0284c7; font-weight: 700; }
+  .form-field-box .checkbox { display: inline-block; width: 12px; height: 12px; border: 1.5px solid #0284c7; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+
+  /* Reject path callout */
+  .reject-callout { width: 100%; max-width: 820px; background: #fee2e2; border: 2px solid #dc2626; border-radius: 12px; padding: 16px 20px; margin-top: 14px; display: flex; align-items: flex-start; gap: 14px; }
+  .reject-icon { width: 36px; height: 36px; border-radius: 50%; background: #dc2626; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 18px; }
+  .reject-text { font-size: 13.5px; color: #7f1d1d; line-height: 1.6; }
+  .reject-text strong { color: #991b1b; }
+
+  /* Swimlane summary */
+  .swimlane-section { margin-top: 60px; }
+  .swimlane-section h2 { text-align: center; font-size: 22px; margin-bottom: 28px; color: #1e293b; }
+  .swimlane-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .swim-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 6px rgba(0,0,0,0.05); border-top: 4px solid; }
+  .swim-card h3 { font-size: 15px; margin-bottom: 4px; }
+  .swim-card .swim-ppl { font-size: 12px; color: #94a3b8; margin-bottom: 10px; font-weight: 500; }
+  .swim-card ul { list-style: none; padding: 0; }
+  .swim-card li { font-size: 13px; color: #475569; padding: 4px 0; padding-left: 16px; position: relative; }
+  .swim-card li::before { content: ''; position: absolute; left: 0; top: 11px; width: 6px; height: 6px; border-radius: 50%; }
+
+  .swim-requester { border-top-color: #2563eb; }
+  .swim-requester li::before { background: #2563eb; }
+  .swim-mkt { border-top-color: #be185d; }
+  .swim-mkt li::before { background: #be185d; }
+  .swim-hs { border-top-color: #047857; }
+  .swim-hs li::before { background: #047857; }
+  .swim-brapp { border-top-color: #6d28d9; }
+  .swim-brapp li::before { background: #6d28d9; }
+  .swim-plat { border-top-color: #b45309; }
+  .swim-plat li::before { background: #b45309; }
+
+  .footer-note { text-align: center; margin-top: 48px; font-size: 13px; color: #94a3b8; }
+
+  @media (max-width: 640px) {
+    .header { padding: 32px 20px 24px; }
+    .header h1 { font-size: 24px; }
+    .step-meta { padding-left: 24px; }
+    .decision { flex-direction: column; }
+    .branch-line { width: 2px; height: 20px; }
+    .approval-table th, .approval-table td { padding: 10px 8px; font-size: 12px; }
+  }
+
+  /* ===== Password gate ===== */
+  #main-content { display: none; }
+  #pw-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 50%, #1a1a2e 100%);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  #pw-overlay .pw-box {
+    background: #fff; border-radius: 20px; padding: 40px 36px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    width: 100%; max-width: 400px; text-align: center;
+  }
+  #pw-overlay .pw-icon {
+    width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 28px; font-weight: 800;
+  }
+  #pw-overlay h2 { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+  #pw-overlay p { font-size: 13.5px; color: #64748b; margin-bottom: 24px; line-height: 1.55; }
+  #pw-overlay input[type="password"] {
+    width: 100%; padding: 14px 16px; font-size: 16px; letter-spacing: 4px; text-align: center;
+    border: 2px solid #e2e8f0; border-radius: 10px; outline: none;
+    transition: border-color 0.15s;
+  }
+  #pw-overlay input[type="password"]:focus { border-color: #3b82f6; }
+  #pw-overlay button {
+    margin-top: 14px; width: 100%; padding: 12px 20px; font-size: 14px; font-weight: 700;
+    color: #fff; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    border: none; border-radius: 10px; cursor: pointer; transition: transform 0.1s, box-shadow 0.15s;
+  }
+  #pw-overlay button:hover { box-shadow: 0 6px 18px rgba(59,130,246,0.35); }
+  #pw-overlay button:active { transform: translateY(1px); }
+  #pw-error { margin-top: 12px; font-size: 12.5px; color: #dc2626; min-height: 18px; font-weight: 600; }
+  #pw-overlay .pw-footer { margin-top: 20px; font-size: 11.5px; color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<!-- ===== Password overlay ===== -->
+<div id="pw-overlay">
+  <div class="pw-box">
+    <div class="pw-icon">&#128274;</div>
+    <h2>보안 접근</h2>
+    <p>본 문서는 보안이 설정된 내부 자료입니다.<br>접근 비밀번호를 입력해 주세요.</p>
+    <input type="password" id="pw-input" placeholder="비밀번호" autocomplete="off" autofocus maxlength="20" />
+    <button type="button" id="pw-btn">확인</button>
+    <div id="pw-error"></div>
+    <div class="pw-footer">플랫폼기획팀 개발 업무 협조전 프로세스</div>
+  </div>
+</div>
+
+<script>
+  // 비밀번호는 Base64로 인코딩되어 있습니다 (소스에 평문 노출 방지).
+  // 주의: 클라이언트 측 보호로, 결정적인 보안 장치는 아닙니다.
+  (function() {
+    var PW = atob("MDEwNQ=="); // "0105"
+    var attempts = 0;
+
+    function unlock() {
+      var overlay = document.getElementById("pw-overlay");
+      var main = document.getElementById("main-content");
+      if (overlay) overlay.style.display = "none";
+      if (main) main.style.display = "block";
+      document.body.style.overflow = "auto";
+    }
+
+    function tryUnlock() {
+      var inputEl = document.getElementById("pw-input");
+      var errEl = document.getElementById("pw-error");
+      var val = (inputEl.value || "").trim();
+      if (val === PW) {
+        unlock();
+      } else {
+        attempts++;
+        errEl.textContent = "비밀번호가 일치하지 않습니다. (시도 " + attempts + "회)";
+        inputEl.value = "";
+        inputEl.focus();
+      }
+    }
+
+    document.body.style.overflow = "hidden";
+
+    function bind() {
+      var btn = document.getElementById("pw-btn");
+      var inputEl = document.getElementById("pw-input");
+      if (btn) {
+        btn.addEventListener("click", tryUnlock);
+      }
+      if (inputEl) {
+        inputEl.addEventListener("keydown", function(e) {
+          if (e.key === "Enter" || e.keyCode === 13) {
+            e.preventDefault();
+            tryUnlock();
+          }
+        });
+        inputEl.focus();
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bind);
+    } else {
+      bind();
+    }
+  })();
+</script>
+
+<!-- ===== Main content (hidden until password verified) ===== -->
+<div id="main-content">
+
+<div class="header">
+  <h1>플랫폼기획팀 개발 업무 협조전 프로세스</h1>
+  <p>배라앱 / 해피스테이션(HS) 시스템 개발 요청 운영 프로세스 (v1.0)</p>
+</div>
+
+<div class="legend-bar">
+  <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>요청 부서 담당</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#be185d"></div>마케팅 담당 (윤설선님, 김혜림님)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#047857"></div>HS 담당 (강지원님)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6d28d9"></div>배라앱 담당 (황주호님, 이새봄님)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#b45309"></div>플랫폼기획팀</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#475569"></div>결재권자 / 참조</div>
+</div>
+
+<div class="container">
+<div class="flow">
+
+  <!-- ========== PHASE 1 ========== -->
+  <div class="phase-heading">
+    <div class="phase-num">1</div>
+    <div class="phase-text">
+      <h2>PHASE 1. 실무자 사전 협의</h2>
+      <p>협조전 상신 전, 플랫폼기획팀 담당자와의 사전 기술 검토 및 개발 공수 산정</p>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step-group">
+    <div class="step-card accent-1">
+      <div class="step-top">
+        <div class="step-number">01</div>
+        <div class="step-body">
+          <div class="step-title">요구사항 전달 및 기술 검토 요청</div>
+          <div class="step-desc">시스템 개발 업무 협조전 상신 전, <strong>플랫폼기획팀 담당자</strong>(배라앱 / HS)에게 요구사항을 전달합니다. 담당자는 요구사항을 바탕으로 기술 검토 및 개발 가능 여부를 사전 확인합니다.</div>
+          <div class="step-checklist">
+            <div class="cl-title">시스템별 플랫폼기획팀 담당자</div>
+            <ul>
+              <li><strong>해피스테이션(HS):</strong> 강지원님</li>
+              <li><strong>배라앱:</strong> 황주호님, 이새봄님</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="step-meta">
+        <span class="meta-tag role-requester">요청 부서 담당 - 요구사항 전달</span>
+        <span class="meta-tag role-hs">HS 담당 - 강지원님</span>
+        <span class="meta-tag role-brapp">배라앱 담당 - 황주호님 / 이새봄님</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marketing parallel consultation callout -->
+  <div class="parallel-box">
+    <div class="parallel-icon">&#9888;</div>
+    <div class="parallel-text">
+      <strong>※ 마케팅 관련 문의인 경우</strong><br>
+      플랫폼기획팀 담당자(강지원님 / 황주호님 / 이새봄님)에게 요구사항을 전달할 때, <strong>마케팅 담당자(윤설선님, 김혜림님)에게도 동시에 협의를 진행</strong>합니다.
+      마케팅 기획 방향성·집행 일정·KPI와 정합성이 맞는지 함께 검토합니다.
+    </div>
+  </div>
+
+  <div class="connector"><div class="line"></div><div class="arrow"></div></div>
+
+  <!-- STEP 2 -->
+  <div class="step-group">
+    <div class="step-card accent-2">
+      <div class="step-top">
+        <div class="step-number">02</div>
+        <div class="step-body">
+          <div class="step-title">요구사항 상세 정의 및 기획 진행</div>
+          <div class="step-desc">플랫폼기획팀 담당자가 전달받은 요구사항을 기반으로 <strong>요구사항을 상세 정의</strong>하고 <strong>기획을 진행</strong>합니다. 필요 시 요청 부서 담당 및 마케팅 담당자와 추가 협의하여 기획을 구체화합니다.</div>
+          <div class="step-checklist">
+            <div class="cl-title">주요 산출물</div>
+            <ul>
+              <li>요구사항 정의서 (기능 범위 / 제외 범위)</li>
+              <li>기획안 (화면 설계 / 정책 / 데이터 흐름)</li>
+              <li>일정 초안 및 리스크 항목</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="step-meta">
+        <span class="meta-tag role-plat">플랫폼기획팀 - 상세 정의 / 기획</span>
+        <span class="meta-tag role-requester">요청 부서 - 협의</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector" style="height:30px;"><div class="line"></div></div>
+
+  <!-- Decision diamond : 업무 타당성 검수 (PHASE 1 내, 02번 아래) -->
+  <div class="decision">
+    <div class="decision-branch no"><span>반려 (요구사항 재협의)</span><div class="branch-line"></div></div>
+    <div class="decision-diamond">업무 타당성<br>검수</div>
+    <div class="decision-branch yes"><div class="branch-line"></div><span>통과 (공수 산정 진행)</span></div>
+  </div>
+
+  <!-- Reject callout : 타당성 미충족 시 처리 -->
+  <div class="reject-callout">
+    <div class="reject-icon">!</div>
+    <div class="reject-text">
+      <strong>※ 반려 시 처리:</strong> 플랫폼기획팀 담당자(HS 강지원님 / 배라앱 황주호님, 이새봄님)의 <strong>업무 타당성 검수 결과</strong>
+      요구사항이 불명확하거나 기획 방향·일정·우선순위가 부적합한 경우 <strong>사전 협의 단계에서 반려될 수 있습니다</strong>.
+      반려 시에는 <strong>PHASE 1의 요구사항 전달 단계(01)로 회귀</strong>하여 요구사항을 보완·재협의한 후 다시 진행해야 하며,
+      타당성이 확보되어야 다음 단계(공수 산정·회신)로 진행되고 PHASE 2 협조전 상신으로 넘어갈 수 있습니다.
+    </div>
+  </div>
+
+  <div class="connector" style="height:30px;"><div class="line"></div><div class="arrow"></div></div>
+
+  <!-- STEP 3 -->
+  <div class="step-group">
+    <div class="step-card accent-3">
+      <div class="step-top">
+        <div class="step-number">03</div>
+        <div class="step-body">
+          <div class="step-title">개발 공수(M/M) 확인 및 회신</div>
+          <div class="step-desc">플랫폼기획팀이 내부 개발 공수를 확인한 뒤, 요청 부서 담당에게 <strong>개발 공수(M/M)</strong>를 회신합니다. 회신된 공수는 이후 단계의 [시스템개발 업무 협조전]에 명시되며, 사전 합의된 수치로 관리됩니다.</div>
+          <div class="step-note"><strong>Tip:</strong> 사전에 공수가 합의되어야 협조전 상신 후 결재 단계에서 공수 논쟁으로 인한 지연이 발생하지 않습니다.</div>
+        </div>
+      </div>
+      <div class="step-meta">
+        <span class="meta-tag role-plat">플랫폼기획팀 - M/M 산정 및 회신</span>
+        <span class="meta-tag role-requester">요청 부서 - 공수 확인</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><div class="line"></div><div class="arrow"></div></div>
+
+  <!-- ========== PHASE 2 ========== -->
+  <div class="phase-heading">
+    <div class="phase-num">2</div>
+    <div class="phase-text">
+      <h2>PHASE 2. 시스템 개발 업무 협조전 상신</h2>
+      <p>사전 협의에서 타당성이 확보된 건에 한해, 공식 결재 라인을 통해 정식 개발 요청</p>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step-group">
+    <div class="step-card accent-4">
+      <div class="step-top">
+        <div class="step-number">04</div>
+        <div class="step-body">
+          <div class="step-title">[시스템개발 업무 협조전] 양식 작성</div>
+          <div class="step-desc">공식적인 개발 요청을 위해 <strong>[시스템개발 업무 협조전]</strong> 양식으로 협조전을 작성합니다. 사전 협의된 요구사항과 개발 공수를 정확히 반영하여 기안합니다.</div>
+          <div class="form-field-box">
+            <div class="ff-title">협조전 필수 기재 항목</div>
+            <ul>
+              <li><strong>시스템 구분</strong> : <span class="checkbox"></span> 배라앱 &nbsp;&nbsp; <span class="checkbox"></span> 해피스테이션(HS) &nbsp;<em>(체크박스로 구분)</em></li>
+              <li><strong>개발 공수</strong> : 사전 협의된 개발 공수(M/M) 명시</li>
+              <li><strong>요구사항 / 기획 내용</strong> : PHASE 1에서 정의된 상세 요구사항</li>
+              <li><strong>희망 일정</strong> : 오픈 희망일 및 주요 마일스톤</li>
+            </ul>
+          </div>
+          <div class="step-note">
+            <strong>안내:</strong> 기존 협조전 양식 내 <strong>플랫폼기획팀 업무</strong> 항목이 추가될 예정입니다.
+          </div>
+        </div>
+      </div>
+      <div class="step-meta">
+        <span class="meta-tag role-requester">요청 부서 담당 - 기안 작성</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><div class="line"></div><div class="arrow"></div></div>
+
+  <!-- STEP 5 : Approval Line -->
+  <div class="step-group">
+    <div class="step-card accent-5">
+      <div class="step-top">
+        <div class="step-number">05</div>
+        <div class="step-body">
+          <div class="step-title">결재 라인 상신</div>
+          <div class="step-desc">작성된 [시스템개발 업무 협조전]은 아래 <strong>결재 라인</strong>에 따라 상신됩니다. 플랫폼기획팀 팀장 단계에서 최종 승인되며, 커머스 마케팅실 실장은 참조로 공유되어 <strong>반려 의견 제시가 가능</strong>합니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approval line table -->
+  <div class="approval-section">
+    <div class="approval-header">결재 라인</div>
+    <table class="approval-table">
+      <thead>
+        <tr>
+          <th style="width:90px;">구분</th>
+          <th>담당</th>
+          <th>역할</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="role-col">기안</td>
+          <td><strong>요청 부서 담당</strong></td>
+          <td>협조전 작성 및 상신</td>
+        </tr>
+        <tr>
+          <td class="role-col">결재</td>
+          <td><strong>요청 부서 팀장</strong></td>
+          <td>요청 내용 / 우선순위 / 예산 검토 및 승인</td>
+        </tr>
+        <tr>
+          <td class="role-col" style="background:#fef3c7; color:#b45309;">합의</td>
+          <td>
+            <strong>배라앱 / HS 담당</strong>
+            <span class="ppl">HS: 강지원님 / 배라앱: 황주호님, 이새봄님</span>
+          </td>
+          <td>요구사항·공수·일정 타당성 검수</td>
+        </tr>
+        <tr>
+          <td class="role-col">결재</td>
+          <td><strong>플랫폼기획팀 팀장</strong></td>
+          <td>최종 개발 착수 승인 <span style="color:#dc2626; font-weight:700;">(반려 가능)</span></td>
+        </tr>
+        <tr>
+          <td class="role-col" style="background:#f1f5f9; color:#475569;">참조</td>
+          <td><strong>커머스 마케팅실 실장</strong></td>
+          <td>진행 현황 공유 <span style="color:#dc2626; font-weight:700;">(참조 및 반려 의견 제시 가능)</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Reject callout : 결재 단계 반려 -->
+  <div class="reject-callout">
+    <div class="reject-icon">!</div>
+    <div class="reject-text">
+      <strong>※ 결재 단계 반려 시 처리:</strong>
+      결재자인 <strong>플랫폼기획팀 팀장</strong>이 협조전을 <strong>반려</strong>할 수 있으며,
+      참조자인 <strong>커머스 마케팅실 실장</strong> 또한 <strong>반려 의견을 제시</strong>할 수 있습니다.
+      반려 사유(요구사항 변경 · 공수 재조정 · 일정/우선순위 조정 등)에 따라 <strong>PHASE 1의 사전 협의 단계로 회귀</strong>하여
+      해당 항목을 보완한 뒤 협조전을 재상신해야 하며, 사전 협의에서 이미 확정된 내용(요구사항·공수)은 재협의를 거쳐 업데이트합니다.
+    </div>
+  </div>
+
+  <div class="connector" style="height:30px;"><div class="line"></div><div class="arrow"></div></div>
+
+  <!-- STEP 6 : Dev kick-off -->
+  <div class="step-group">
+    <div class="step-card accent-6">
+      <div class="step-top">
+        <div class="step-number">06</div>
+        <div class="step-body">
+          <div class="step-title">결재 완료 및 개발 착수</div>
+          <div class="step-desc">모든 결재가 완료되면 플랫폼기획팀이 개발 일정을 확정하고 개발에 착수합니다. 기안 부서에는 개발 착수 사실과 주요 마일스톤이 공유됩니다.</div>
+        </div>
+      </div>
+      <div class="step-meta">
+        <span class="meta-tag role-plat">플랫폼기획팀 - 개발 착수</span>
+        <span class="meta-tag role-requester">요청 부서 - 진행 모니터링</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Swimlane Summary -->
+<div class="swimlane-section">
+  <h2>역할별 업무 요약</h2>
+  <div class="swimlane-grid">
+    <div class="swim-card swim-requester">
+      <h3>요청 부서 담당</h3>
+      <div class="swim-ppl">(기안자)</div>
+      <ul>
+        <li>요구사항 전달</li>
+        <li>사전 협의 참여</li>
+        <li>개발 공수 확인</li>
+        <li>협조전 기안 및 상신</li>
+      </ul>
+    </div>
+    <div class="swim-card swim-mkt">
+      <h3>마케팅 담당</h3>
+      <div class="swim-ppl">윤설선님, 김혜림님</div>
+      <ul>
+        <li>마케팅 관련 문의 시 동시 협의</li>
+        <li>마케팅 방향성 / 일정 / KPI 정합성 검토</li>
+      </ul>
+    </div>
+    <div class="swim-card swim-hs">
+      <h3>HS 담당</h3>
+      <div class="swim-ppl">강지원님</div>
+      <ul>
+        <li>HS 요구사항 접수 / 기술 검토</li>
+        <li>요구사항 상세 정의 및 기획</li>
+        <li>개발 공수(M/M) 산정 및 회신</li>
+        <li>합의 단계 타당성 검수</li>
+      </ul>
+    </div>
+    <div class="swim-card swim-brapp">
+      <h3>배라앱 담당</h3>
+      <div class="swim-ppl">황주호님, 이새봄님</div>
+      <ul>
+        <li>배라앱 요구사항 접수 / 기술 검토</li>
+        <li>요구사항 상세 정의 및 기획</li>
+        <li>개발 공수(M/M) 산정 및 회신</li>
+        <li>합의 단계 타당성 검수</li>
+      </ul>
+    </div>
+    <div class="swim-card swim-plat">
+      <h3>플랫폼기획팀 팀장</h3>
+      <div class="swim-ppl">(최종 결재)</div>
+      <ul>
+        <li>개발 착수 최종 승인</li>
+        <li>업무 타당성 최종 판단 (반려 가능)</li>
+        <li>개발 리소스 배분 결정</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note">시스템 개발 업무 협조전 운영 프로세스 v1.0 | 2026.04</div>
+
+</div>
+</div>
+<!-- ===== /Main content ===== -->
+</body>
+</html>

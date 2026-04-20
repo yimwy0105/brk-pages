@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배스킨라빈스 구독제 분석 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+body { font-family: 'Segoe UI', -apple-system, sans-serif; background: #f5f5f5; color: #333; overflow-y: scroll; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+/* Page snap */
+.page {
+  min-height: 100vh;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 0;
+  box-sizing: border-box;
+}
+.page:first-child { padding-top: 20px; }
+
+/* Page indicator */
+.page-indicator {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+}
+.page-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ddd;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+.page-dot.active { background: #d4237a; transform: scale(1.4); }
+.page-dot:hover { background: #f472b6; }
+
+/* Nav buttons */
+.page-nav {
+  position: fixed;
+  right: 20px;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+}
+.page-nav button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #d4237a;
+  background: white;
+  color: #d4237a;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  transition: all 0.2s ease;
+}
+.page-nav button:hover { background: #d4237a; color: white; }
+.page-nav button:disabled { opacity: 0.3; cursor: default; background: white; color: #d4237a; }
+
+/* Page counter */
+.page-counter {
+  position: fixed;
+  right: 76px;
+  bottom: 42px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d4237a;
+  background: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+h1 { text-align: center; color: #d4237a; font-size: 28px; margin: 20px 0 10px; }
+.subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 30px; }
+.section-title { background: #d4237a; color: white; padding: 12px 20px; border-radius: 8px 8px 0 0; font-size: 18px; font-weight: 600; margin-top: 30px; }
+.card { background: white; border-radius: 0 0 8px 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.card-standalone { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.kpi { text-align: center; padding: 20px; background: linear-gradient(135deg, #fff5f9, #fff); border: 1px solid #f0d0e0; border-radius: 8px; }
+.kpi .value { font-size: 32px; font-weight: 700; color: #d4237a; }
+.kpi .label { font-size: 13px; color: #888; margin-top: 4px; }
+.kpi .sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+.chart-container { position: relative; height: 350px; margin: 16px 0; }
+.chart-container-sm { position: relative; height: 280px; margin: 16px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table th { background: #f8f0f5; color: #d4237a; padding: 10px 8px; text-align: center; border-bottom: 2px solid #d4237a; font-weight: 600; }
+table td { padding: 8px; text-align: center; border-bottom: 1px solid #eee; }
+table tr:hover { background: #fdf5f9; }
+.positive { color: #0a8754; font-weight: 600; }
+.negative { color: #e53e3e; font-weight: 600; }
+.formula-box { background: #f8f4ff; border: 1px solid #d0c0e0; border-radius: 8px; padding: 16px; margin: 12px 0; font-family: monospace; font-size: 13px; line-height: 1.8; }
+.formula-box .label { font-family: 'Segoe UI', sans-serif; font-weight: 600; color: #6b46c1; margin-bottom: 8px; }
+.insight-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+.insight-box strong { color: #b45309; }
+.funnel-bar { display: flex; align-items: center; margin: 6px 0; }
+.funnel-bar .bar { height: 32px; background: linear-gradient(90deg, #d4237a, #f472b6); border-radius: 4px; display: flex; align-items: center; padding: 0 10px; color: white; font-size: 12px; font-weight: 600; min-width: 50px; transition: width 0.5s; }
+.funnel-bar .info { margin-left: 10px; font-size: 12px; color: #666; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.tag-pink { background: #fce4ec; color: #c2185b; }
+.tag-green { background: #e8f5e9; color: #2e7d32; }
+.tag-blue { background: #e3f2fd; color: #1565c0; }
+.divider { border: 0; border-top: 1px dashed #ddd; margin: 20px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="page" id="page-0">
+<h1>배스킨라빈스 앱 구독제 분석 대시보드</h1>
+<p class="subtitle">자사 데이터 기반 분석 | RPD (Rapid Product Development) - DISCOVER Phase</p>
+
+<!-- KPI Summary -->
+<div class="grid-3" style="margin-top:20px">
+  <div class="kpi">
+    <div class="value">893,650</div>
+    <div class="label">총 앱 회원수</div>
+    <div class="sub">핑크콘 96.0% | 실버콘 0.09% | 골드콘 0.02%</div>
+  </div>
+  <div class="kpi">
+    <div class="value">3.45%</div>
+    <div class="label">재구매 전환율</div>
+    <div class="sub">앱 회원 대비 재구매자 (30,813명)</div>
+  </div>
+  <div class="kpi">
+    <div class="value">51.94%</div>
+    <div class="label">IC 가중 확정마진율</div>
+    <div class="sub">판매가 대비 마진율</div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-1">
+<!-- SECTION 1: App Funnel -->
+<div class="section-title">1. 앱 고객 퍼널 분석</div>
+<div class="card">
+  <div class="grid-2">
+    <div>
+      <h3 style="margin-bottom:14px; color:#555;">회원가입부터 충성고객까지의 전환 퍼널</h3>
+      <div class="funnel-bar"><div class="bar" style="width:100%">893,650명</div><div class="info">총 앱 회원 (100%)</div></div>
+      <div class="funnel-bar"><div class="bar" style="width:19.5%">174,003</div><div class="info">첫결제자 (19.46%)</div></div>
+      <div class="funnel-bar"><div class="bar" style="width:3.45%; min-width:80px">30,813</div><div class="info">재구매자 (3.45%)</div></div>
+      <div class="funnel-bar"><div class="bar" style="width:0.42%; min-width:70px; background:linear-gradient(90deg,#7c3aed,#a78bfa)">3,784</div><div class="info">전환고객 (0.42%)</div></div>
+      <div class="funnel-bar"><div class="bar" style="width:0.14%; min-width:60px; background:linear-gradient(90deg,#6366f1,#818cf8)">1,275</div><div class="info">충성고객 (0.14%)</div></div>
+
+      <div class="insight-box" style="margin-top:16px">
+        <strong>핵심 병목:</strong> 89.4만명 앱 회원 중 첫결제자는 <strong>19.46%</strong>에 불과.<br>
+        첫결제 후 재구매 전환율도 <strong>17.7%</strong>로, 앱 회원 전체 <strong>3.45%</strong>(30,813명)에 머묾.<br>
+        → 재구매자를 늘리는 전환 장치가 구독제의 핵심 가치가 되어야 함
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:14px; color:#555;">등급별 첫결제·재구매율 비교</h3>
+      <div class="chart-container-sm">
+        <canvas id="tierChart"></canvas>
+      </div>
+      <div class="insight-box">
+        <strong>로열티 구조 검증:</strong> 실버/골드콘 재구매율(50~60%)이 핑크콘(3.6%)의 <strong>약 15배</strong>.<br>
+        → 로열티 등급이 강력한 재구매 드라이버로 작동
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-2">
+<!-- SECTION 2: Retention -->
+<div class="section-title">2. 리텐션 분석</div>
+<div class="card">
+  <div class="grid-2">
+    <div>
+      <h3 style="margin-bottom:14px; color:#555;">회원가입 기준 월별 리텐션</h3>
+      <div class="chart-container-sm"><canvas id="retentionChart1"></canvas></div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:14px; color:#555;">구매 기반 월별 리텐션</h3>
+      <div class="chart-container-sm"><canvas id="retentionChart2"></canvas></div>
+    </div>
+  </div>
+  <div class="insight-box">
+    <strong>1개월 내 급락 패턴:</strong> 가입 기준 1개월 내 약 85% → 25%로 급락. 구매 기반에서도 첫 구매 후 ~10%, 1개월 후 ~5%대로 이탈.<br>
+    → <strong>이탈 방지를 위해 1개월 내 재구매 유도</strong>가 구독제의 핵심 기능 (매우 낮은 월 유지율 개선 필요)
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-3">
+<!-- SECTION 3: Sales Mix -->
+<div class="section-title">3. 앱 판매 구조 분석</div>
+<div class="card" style="padding:16px 20px;">
+  <div class="grid-2" style="gap:16px;">
+    <div>
+      <h3 style="margin-bottom:6px; color:#555; font-size:14px;">제품 사이즈별 판매 비중</h3>
+      <div class="chart-container-sm" style="height:220px; margin:4px 0;"><canvas id="salesPieChart"></canvas></div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:6px; color:#555; font-size:14px;">제품별 매출 비중 vs 마진 비중</h3>
+      <div class="chart-container-sm" style="height:220px; margin:4px 0;"><canvas id="revenueMarginChart"></canvas></div>
+    </div>
+  </div>
+  <table style="margin-top:10px; font-size:12px;">
+    <tr>
+      <th style="padding:6px 6px;">제품</th><th style="padding:6px 6px;">판매수량</th><th style="padding:6px 6px;">비중</th><th style="padding:6px 6px;">판매가</th><th style="padding:6px 6px;">원가</th><th style="padding:6px 6px;">건당 마진</th><th style="padding:6px 6px;">확정마진율</th><th style="padding:6px 6px;">매출 비중</th>
+    </tr>
+    <tr><td style="padding:4px 6px;"><strong>파인트</strong></td><td style="padding:4px 6px;">25,964</td><td style="padding:4px 6px;">27.2%</td><td style="padding:4px 6px;">9,800원</td><td style="padding:4px 6px;">3,845원</td><td style="padding:4px 6px;" class="positive">5,955원</td><td style="padding:4px 6px;">51.7%</td><td style="padding:4px 6px;">19.1%</td></tr>
+    <tr><td style="padding:4px 6px;"><strong>쿼터</strong></td><td style="padding:4px 6px;">18,855</td><td style="padding:4px 6px;">19.8%</td><td style="padding:4px 6px;">18,500원</td><td style="padding:4px 6px;">7,434원</td><td style="padding:4px 6px;" class="positive">11,066원</td><td style="padding:4px 6px;">50.7%</td><td style="padding:4px 6px;">26.2%</td></tr>
+    <tr><td style="padding:4px 6px;"><strong>패밀리</strong></td><td style="padding:4px 6px;">12,250</td><td style="padding:4px 6px;">12.8%</td><td style="padding:4px 6px;">26,000원</td><td style="padding:4px 6px;">11,475원</td><td style="padding:4px 6px;" class="positive">14,525원</td><td style="padding:4px 6px;">46.8%</td><td style="padding:4px 6px;">23.9%</td></tr>
+    <tr><td style="padding:4px 6px;"><strong>하프갤론</strong></td><td style="padding:4px 6px;">10,913</td><td style="padding:4px 6px;">11.4%</td><td style="padding:4px 6px;">31,500원</td><td style="padding:4px 6px;">14,475원</td><td style="padding:4px 6px;" class="positive">17,025원</td><td style="padding:4px 6px;">44.9%</td><td style="padding:4px 6px;">25.8%</td></tr>
+    <tr><td style="padding:4px 6px;"><strong>싱글레귤러</strong></td><td style="padding:4px 6px;">13,761</td><td style="padding:4px 6px;">14.4%</td><td style="padding:4px 6px;">3,900원</td><td style="padding:4px 6px;">1,394원</td><td style="padding:4px 6px;" class="positive">2,506원</td><td style="padding:4px 6px;">54.9%</td><td style="padding:4px 6px;">4.0%</td></tr>
+    <tr><td style="padding:4px 6px;"><strong>더블</strong></td><td style="padding:4px 6px;">2,051</td><td style="padding:4px 6px;">2.2%</td><td style="padding:4px 6px;">5,100원</td><td style="padding:4px 6px;">1,822원</td><td style="padding:4px 6px;" class="positive">3,278원</td><td style="padding:4px 6px;">55.2%</td><td style="padding:4px 6px;">0.8%</td></tr>
+    <tr><td style="padding:4px 6px;"><strong>싱글킹</strong></td><td style="padding:4px 6px;">822</td><td style="padding:4px 6px;">0.9%</td><td style="padding:4px 6px;">4,700원</td><td style="padding:4px 6px;">1,762원</td><td style="padding:4px 6px;" class="positive">2,938원</td><td style="padding:4px 6px;">53.4%</td><td style="padding:4px 6px;">0.3%</td></tr>
+    <tr style="background:#fdf5f9; font-weight:600">
+      <td style="padding:4px 6px;">가중평균</td><td style="padding:4px 6px;">84,616</td><td style="padding:4px 6px;">100%</td><td style="padding:4px 6px;">15,760원</td><td style="padding:4px 6px;">6,652원</td><td style="padding:4px 6px;" class="positive">9,107원</td><td style="padding:4px 6px;">57.8%</td><td style="padding:4px 6px;">100%</td>
+    </tr>
+  </table>
+  <div class="insight-box" style="padding:10px 14px; margin:8px 0; line-height:1.5;">
+    <strong>앱 고객은 대용량 중심:</strong> 파인트+쿼터+패밀리+하프갤론이 수량 71%, 매출 95% 차지. 앱 가중평균 객단가 <strong>15,760원</strong>은 HP 분석 객단가(14,599원)보다 8% 높음. → 앱 고객은 홈 소비용 대용량을 선호하며, 구독 혜택도 이에 맞춰야 함
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-4">
+<!-- SECTION 4: Cost Structure -->
+<div class="section-title">4. IC 원가 구조 분석</div>
+<div class="card">
+  <div class="chart-container"><canvas id="costChart"></canvas></div>
+  <div class="formula-box">
+    <div class="label">원가 산출 공식</div>
+    원가합계 = 원가(부재료 제외) + 용품(콘/컵) 비용<br>
+    점포마진 = VAT제외 판매가 - 원가합계<br>
+    매가대비 확정마진율 = 점포마진 ÷ 판매가(VAT 포함) × 100<br><br>
+    <em>예) 파인트: (8,909 - 3,845) ÷ 9,800 = 51.68%</em>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-5">
+<!-- SECTION 5-1: Break-even Light -->
+<div class="section-title">5. 손익분기점 분석 — 라이트</div>
+<div class="card">
+
+  <h3 style="margin-bottom:12px; color:#d4237a;">5-1. 라이트 티어 (5,900원/월)</h3>
+  <div class="formula-box">
+    <div class="label">라이트 월간 순이익 공식</div>
+    월간 순이익 = 구독료(5,900원) - 무료제공 원가(싱글레귤러 1,394원) - 추가구매 할인비용(객단가 × 5% × 추가구매횟수)<br><br>
+    <strong>순이익 = 5,900 - 1,394 - (15,760 × 0.05 × N)</strong><br>
+    <strong>순이익 = 4,506 - 788N</strong> (N = 월 추가구매 횟수)<br><br>
+    손익분기점: 4,506 ÷ 788 = <strong>월 5.7회</strong> 추가구매 시 손익분기
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="chart-container-sm"><canvas id="basicBEChart"></canvas></div>
+    </div>
+    <div>
+      <table>
+        <tr><th>추가구매 횟수</th><th>구독료</th><th>무료제공 원가</th><th>할인비용</th><th>월간 순이익</th></tr>
+        <tr><td>0회</td><td>5,900</td><td>1,394</td><td>0</td><td class="positive">+4,506</td></tr>
+        <tr><td>1회</td><td>5,900</td><td>1,394</td><td>788</td><td class="positive">+3,718</td></tr>
+        <tr><td>2회</td><td>5,900</td><td>1,394</td><td>1,576</td><td class="positive">+2,930</td></tr>
+        <tr><td>3회</td><td>5,900</td><td>1,394</td><td>2,364</td><td class="positive">+2,142</td></tr>
+        <tr><td>4회</td><td>5,900</td><td>1,394</td><td>3,152</td><td class="positive">+1,354</td></tr>
+        <tr><td>5회</td><td>5,900</td><td>1,394</td><td>3,940</td><td class="positive">+566</td></tr>
+        <tr><td>6회</td><td>5,900</td><td>1,394</td><td>4,728</td><td class="negative">-222</td></tr>
+      </table>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<div class="page" id="page-6">
+<!-- SECTION 5-2: Break-even Premium -->
+<div class="section-title">5. 손익분기점 분석 — 프리미엄</div>
+<div class="card" style="padding:16px 20px;">
+
+  <h3 style="margin-bottom:6px; color:#d4237a; font-size:15px;">5-2. 프리미엄 티어 (14,900원/월)</h3>
+  <div class="formula-box" style="padding:10px 14px; line-height:1.5; margin:6px 0;">
+    <div class="label" style="margin-bottom:4px;">프리미엄 월간 순이익 공식</div>
+    월간 순이익 = 구독료(14,900) - 무료제공 원가(파인트 3,845) - 생일쿠폰 월할(320) - 추가구매 할인비용(객단가 × 10% × N)<br>
+    <strong>= 14,900 - 3,845 - 320 - (15,760 × 0.10 × N) = 10,735 - 1,576N</strong> &nbsp;|&nbsp; 손익분기점: 10,735 ÷ 1,576 = <strong>월 6.8회</strong>
+  </div>
+
+  <div class="grid-2" style="gap:16px;">
+    <div>
+      <div class="chart-container-sm" style="height:230px; margin:4px 0;"><canvas id="premiumBEChart"></canvas></div>
+    </div>
+    <div>
+      <table style="font-size:12px;">
+        <tr><th style="padding:5px 6px;">추가구매 횟수</th><th style="padding:5px 6px;">구독료</th><th style="padding:5px 6px;">고정비용</th><th style="padding:5px 6px;">할인비용</th><th style="padding:5px 6px;">월간 순이익</th></tr>
+        <tr><td style="padding:3px 6px;">0회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">0</td><td style="padding:3px 6px;" class="positive">+10,735</td></tr>
+        <tr><td style="padding:3px 6px;">1회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">1,576</td><td style="padding:3px 6px;" class="positive">+9,159</td></tr>
+        <tr><td style="padding:3px 6px;">2회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">3,152</td><td style="padding:3px 6px;" class="positive">+7,583</td></tr>
+        <tr><td style="padding:3px 6px;">3회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">4,728</td><td style="padding:3px 6px;" class="positive">+6,007</td></tr>
+        <tr><td style="padding:3px 6px;">4회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">6,304</td><td style="padding:3px 6px;" class="positive">+4,431</td></tr>
+        <tr><td style="padding:3px 6px;">5회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">7,880</td><td style="padding:3px 6px;" class="positive">+2,855</td></tr>
+        <tr><td style="padding:3px 6px;">6회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">9,456</td><td style="padding:3px 6px;" class="positive">+1,279</td></tr>
+        <tr><td style="padding:3px 6px;">7회</td><td style="padding:3px 6px;">14,900</td><td style="padding:3px 6px;">4,165</td><td style="padding:3px 6px;">11,032</td><td style="padding:3px 6px;" class="negative">-297</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="insight-box" style="padding:10px 14px; margin:8px 0; line-height:1.5;">
+    <strong>양 티어 모두 구조적으로 안전:</strong> 라이트 월 5회 이하 / 프리미엄 월 6회 이하 추가구매까지 흑자. 현재 평균 월 0.3회 방문 대비 매우 넉넉하며, 월 3~4회 이상 구매 고객은 극소수 → <strong>손실 위험 매우 낮음</strong>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-7">
+<!-- SECTION 6: Revenue Uplift -->
+<div class="section-title">6. 구독 전환 시 순증 매출 분석</div>
+<div class="card" style="padding:16px 20px;">
+  <div class="formula-box" style="padding:10px 14px; line-height:1.5; margin:6px 0;">
+    <div class="label" style="margin-bottom:4px;">순증 매출 공식</div>
+    비구독 연간 지출 = 연 3.6회 × 14,599원 = <strong>52,556원</strong> &nbsp;|&nbsp; 구독자 연간 기여 = (구독료 × 12) + (월 추가구매횟수 × 앱 평균 객단가 15,760원 × 12) &nbsp;|&nbsp; 순증 매출 = 구독자 연간 기여 - 비구독 연간 지출
+  </div>
+
+  <div class="chart-container" style="height:230px; margin:6px 0;"><canvas id="upliftChart"></canvas></div>
+
+  <table style="font-size:12px;">
+    <tr>
+      <th rowspan="2" style="padding:5px 6px;">시나리오</th>
+      <th colspan="4" style="background:#fce4ec; padding:5px 6px;">라이트 (3,900원/월)</th>
+      <th colspan="4" style="background:#e8f5e9; padding:5px 6px;">프리미엄 (9,900원/월)</th>
+    </tr>
+    <tr>
+      <th style="padding:5px 6px;">추가구매 빈도</th><th style="padding:5px 6px;">연간 기여</th><th style="padding:5px 6px;">순증 매출</th><th style="padding:5px 6px;">증가율</th>
+      <th style="padding:5px 6px;">추가구매 빈도</th><th style="padding:5px 6px;">연간 기여</th><th style="padding:5px 6px;">순증 매출</th><th style="padding:5px 6px;">증가율</th>
+    </tr>
+    <tr>
+      <td style="padding:4px 6px;"><span class="tag tag-blue">Conservative</span></td>
+      <td style="padding:4px 6px;">3개월 1회</td>
+      <td style="padding:4px 6px;">109,840원</td><td style="padding:4px 6px;" class="positive">+57,284원</td><td style="padding:4px 6px;" class="positive">+109%</td>
+      <td style="padding:4px 6px;">3개월 1회</td>
+      <td style="padding:4px 6px;">181,840원</td><td style="padding:4px 6px;" class="positive">+129,284원</td><td style="padding:4px 6px;" class="positive">+246%</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 6px;"><span class="tag tag-green">Base</span></td>
+      <td style="padding:4px 6px;">2개월 1회</td>
+      <td style="padding:4px 6px;">141,360원</td><td style="padding:4px 6px;" class="positive">+88,804원</td><td style="padding:4px 6px;" class="positive">+169%</td>
+      <td style="padding:4px 6px;">월 1회</td>
+      <td style="padding:4px 6px;">307,920원</td><td style="padding:4px 6px;" class="positive">+255,364원</td><td style="padding:4px 6px;" class="positive">+486%</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 6px;"><span class="tag tag-pink">Optimistic</span></td>
+      <td style="padding:4px 6px;">월 1회</td>
+      <td style="padding:4px 6px;">235,920원</td><td style="padding:4px 6px;" class="positive">+183,364원</td><td style="padding:4px 6px;" class="positive">+349%</td>
+      <td style="padding:4px 6px;">2개월 3회 (월 1.5회)</td>
+      <td style="padding:4px 6px;">402,480원</td><td style="padding:4px 6px;" class="positive">+349,924원</td><td style="padding:4px 6px;" class="positive">+666%</td>
+    </tr>
+  </table>
+
+  <div class="insight-box" style="padding:10px 14px; margin:8px 0; line-height:1.5;">
+    <strong>구독 전환의 임팩트:</strong> 보수적 시나리오(라이트 3개월 1회)에서도 라이트 구독자의 연간 기여가 <strong>비구독자 대비 약 2.1배</strong>, Base(라이트 2개월 1회)에서는 <strong>약 2.7배</strong>로 증가. 가입자 고정(라이트 15K + 프리 500) 기준 Base 시나리오에서 연간 순증 매출 약 <strong>14.6억원</strong>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-8">
+<!-- SECTION 7: Scenario -->
+<div class="section-title">7. 구독자 규모별 연간 추가 수익 시뮬레이션</div>
+<div class="card">
+  <div class="formula-box">
+    <div class="label">순증 매출 공식 & 시뮬레이션 공식 (Base 시나리오 기준)</div>
+    ▪ 비구독 연간 지출 = 연 3.6회 × 14,599원 = <strong>52,556원</strong><br>
+    ▪ 1인당 연간 순증 (Base — 라이트 2개월 1회 / 프리미엄 월 1회)<br>
+    &nbsp;&nbsp;&nbsp; ‒ 라이트: +88,804원/년 &nbsp; ‒ 프리미엄: +255,364원/년<br>
+    &nbsp;&nbsp;&nbsp; ‒ Tier 비율: 라이트 96.8% : 프리미엄 3.2% (= 15,000 : 500)<br><br>
+    <strong>연간 순증 매출 = 라이트 인원 × 88,804 + 프리미엄 인원 × 255,364</strong><br>
+    <em>예) 15,500명 = 15,000×88,804 + 500×255,364 ≈ 14.60억원</em>
+  </div>
+  <div class="chart-container"><canvas id="scenarioChart"></canvas></div>
+  <table>
+    <tr><th>전체</th><th>라이트</th><th>프리미엄</th><th>L 순증</th><th>P 순증</th><th>합계</th></tr>
+    <tr><td>1,000명</td><td>968</td><td>32</td><td>0.86억</td><td>0.08억</td><td style="font-weight:700;color:#d4237a;">0.94억</td></tr>
+    <tr><td>3,000명</td><td>2,903</td><td>97</td><td>2.58억</td><td>0.25억</td><td style="font-weight:700;color:#d4237a;">2.83억</td></tr>
+    <tr><td>5,000명</td><td>4,839</td><td>161</td><td>4.30억</td><td>0.41억</td><td style="font-weight:700;color:#d4237a;">4.71억</td></tr>
+    <tr><td>10,000명</td><td>9,677</td><td>323</td><td>8.59억</td><td>0.82억</td><td style="font-weight:700;color:#d4237a;">9.42억</td></tr>
+    <tr style="background:#fce4ec;"><td><strong>15,500명</strong></td><td>15,000</td><td>500</td><td>13.32억</td><td>1.28억</td><td style="font-weight:700;color:#d4237a;">14.60억</td></tr>
+  </table>
+</div>
+</div>
+
+<div class="page" id="page-9">
+<!-- SECTION 8: Customer Profile -->
+<div class="section-title">8. 고객 프로파일 종합</div>
+<div class="card">
+  <div class="grid-2">
+    <div>
+      <h3 style="margin-bottom:14px; color:#555;">방문빈도별 고객 분포 (HP 기준)</h3>
+      <div class="chart-container-sm"><canvas id="visitFreqChart"></canvas></div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:14px; color:#555;">구독 타겟 세그먼트</h3>
+      <table>
+        <tr><th>세그먼트</th><th>비중</th><th>특성</th><th>구독 적합성</th></tr>
+        <tr><td>간헐적 방문</td><td>65.9%</td><td>연 1~2회</td><td><span class="tag tag-blue">라이트 유도</span></td></tr>
+        <tr><td>평균빈도</td><td>15.2%</td><td>연 3~4회</td><td><span class="tag tag-green">라이트 핵심</span></td></tr>
+        <tr><td>중빈도</td><td>14.6%</td><td>연 5~8회</td><td><span class="tag tag-pink">프리미엄 후보</span></td></tr>
+        <tr><td>BR Lover</td><td>4.3%</td><td>연 9회+</td><td><span class="tag tag-pink">프리미엄 핵심</span></td></tr>
+      </table>
+      <div class="insight-box" style="margin-top:12px">
+        <strong>타겟 전략:</strong><br>
+        - 1차: 평균빈도+중빈도 고객(29.8%) → 라이트 전환<br>
+        - 2차: BR Lover(4.3%) → 프리미엄 전환<br>
+        - 3차: 간헐적 방문객(65.9%) → 구독 통한 빈도 증가<br>
+        <strong>HP 기준 잠재 타겟:</strong> 약 315,000명 (HP 커버 35.3% × 893,650)
+      </div>
+    </div>
+  </div>
+</div>
+<div style="text-align:center; padding:20px; color:#aaa; font-size:12px;">
+  배스킨라빈스 구독제 RPD 분석 | 자사 데이터 기반 | 2026.04
+</div>
+</div>
+</div><!-- /.container -->
+
+<!-- Page Navigation Buttons -->
+<div class="page-indicator" id="pageIndicator"></div>
+<div class="page-counter" id="pageCounter">1 / 10</div>
+<div class="page-nav">
+  <button id="btnUp" aria-label="이전 페이지">&#9650;</button>
+  <button id="btnDown" aria-label="다음 페이지">&#9660;</button>
+</div>
+
+<script>
+// Color palette
+const pink = '#d4237a';
+const pinkLight = '#f472b6';
+const green = '#0a8754';
+const greenLight = '#34d399';
+const blue = '#3b82f6';
+const purple = '#7c3aed';
+const orange = '#f59e0b';
+const gray = '#9ca3af';
+
+// 1. Tier comparison chart
+new Chart(document.getElementById('tierChart'), {
+  type: 'bar',
+  data: {
+    labels: ['핑크콘\n(857,942명)', '실버콘\n(784명)', '골드콘\n(163명)'],
+    datasets: [
+      { label: '첫 앱결제율', data: [20.39, 60.29, 50], backgroundColor: pinkLight },
+      { label: '재구매율', data: [3.61, 59.77, 51.95], backgroundColor: pink }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
+    scales: { y: { beginAtZero: true, max: 70, ticks: { callback: v => v + '%' } } }
+  }
+});
+
+// 2a. Registration retention
+new Chart(document.getElementById('retentionChart1'), {
+  type: 'line',
+  data: {
+    labels: ['가입월', '+1개월', '+2개월', '+3개월', '+4개월'],
+    datasets: [
+      { label: 'Jul 2025', data: [89.64, 39.15, 15.06, 16.49, 12.02], borderColor: pink, fill: false, tension: 0.3 },
+      { label: 'Oct 2025', data: [85.37, 20.29, 15.05, 11.57, 9.18], borderColor: blue, fill: false, tension: 0.3 },
+      { label: 'Jan 2026', data: [84.14, 23.81, 14.42, null, null], borderColor: green, fill: false, tension: 0.3 },
+      { label: '평균', data: [86.5, 25.5, 14.5, 12.5, 10.5], borderColor: '#333', borderWidth: 3, borderDash: [5,5], fill: false, tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 10 } } } },
+    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+  }
+});
+
+// 2b. Purchase retention
+new Chart(document.getElementById('retentionChart2'), {
+  type: 'line',
+  data: {
+    labels: ['당월', '+1개월', '+2개월', '+3개월', '+4개월', '+5개월', '+6개월'],
+    datasets: [
+      { label: 'Jun 2025', data: [29.08, 10.16, 6.15, 2.61, 2.94, 1.96, 2.23], borderColor: pink, fill: false, tension: 0.3 },
+      { label: 'Oct 2025', data: [10.73, 4.03, 2.50, 2.31, 1.97, 2.15, 0.45], borderColor: blue, fill: false, tension: 0.3 },
+      { label: 'Jan 2026', data: [8.63, 5.80, 5.02, 0.82, null, null, null], borderColor: green, fill: false, tension: 0.3 },
+      { label: '평균', data: [12, 5.5, 3.5, 2.5, 2.0, 1.8, 1.5], borderColor: '#333', borderWidth: 3, borderDash: [5,5], fill: false, tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 10 } } } },
+    scales: { y: { beginAtZero: true, max: 35, ticks: { callback: v => v + '%' } } }
+  }
+});
+
+// 3a. Sales pie
+new Chart(document.getElementById('salesPieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['파인트 27.2%', '쿼터 19.8%', '싱글레귤러 14.4%', '패밀리 12.8%', '하프갤론 11.4%', '기타 14.4%'],
+    datasets: [{ data: [27.2, 19.8, 14.4, 12.8, 11.4, 14.4], backgroundColor: [pink, blue, orange, green, purple, gray] }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
+  }
+});
+
+// 3b. Revenue vs margin
+new Chart(document.getElementById('revenueMarginChart'), {
+  type: 'bar',
+  data: {
+    labels: ['파인트', '쿼터', '패밀리', '하프갤론', '싱글레귤러'],
+    datasets: [
+      { label: '매출 비중', data: [19.1, 26.2, 23.9, 25.8, 4.0], backgroundColor: pinkLight },
+      { label: '확정마진율', data: [51.7, 50.7, 46.8, 44.9, 54.9], backgroundColor: green, type: 'line', borderColor: green, fill: false, yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
+    scales: {
+      y: { beginAtZero: true, max: 30, ticks: { callback: v => v + '%' }, title: { display: true, text: '매출 비중' } },
+      y1: { position: 'right', min: 40, max: 60, ticks: { callback: v => v + '%' }, title: { display: true, text: '확정마진율' }, grid: { drawOnChartArea: false } }
+    }
+  }
+});
+
+// 4. Cost structure chart
+new Chart(document.getElementById('costChart'), {
+  type: 'bar',
+  data: {
+    labels: ['싱글레귤러', '싱글킹', '더블쥬니어', '파인트', '쿼터', '패밀리', '하프갤론'],
+    datasets: [
+      { label: '원가합계', data: [1394, 1762, 1822, 3845, 7434, 11475, 14475], backgroundColor: '#fee2e2', borderColor: '#ef4444', borderWidth: 1 },
+      { label: '점포마진', data: [2152, 2511, 2814, 5064, 9384, 12162, 14162], backgroundColor: '#dcfce7', borderColor: '#22c55e', borderWidth: 1 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toLocaleString() + '원' } }
+    },
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, ticks: { callback: v => (v/1000).toFixed(0) + '천원' } }
+    }
+  }
+});
+
+// 5a. Light break-even chart
+new Chart(document.getElementById('basicBEChart'), {
+  type: 'bar',
+  data: {
+    labels: ['0회', '1회', '2회', '3회', '4회', '5회', '6회'],
+    datasets: [{
+      label: '월간 순이익',
+      data: [4506, 3718, 2930, 2142, 1354, 566, -222],
+      backgroundColor: ctx => ctx.raw >= 0 ? '#dcfce7' : '#fee2e2',
+      borderColor: ctx => ctx.raw >= 0 ? '#22c55e' : '#ef4444',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: { display: true, text: '라이트 - 추가구매 횟수별 순이익', font: { size: 13 } },
+      tooltip: { callbacks: { label: ctx => ctx.raw.toLocaleString() + '원' } }
+    },
+    scales: {
+      y: {
+        ticks: { callback: v => (v/1000).toFixed(1) + '천원' },
+        grid: { color: ctx => ctx.tick.value === 0 ? '#333' : '#eee' }
+      }
+    }
+  }
+});
+
+// 5b. Premium break-even chart
+new Chart(document.getElementById('premiumBEChart'), {
+  type: 'bar',
+  data: {
+    labels: ['0회', '1회', '2회', '3회', '4회', '5회', '6회', '7회'],
+    datasets: [{
+      label: '월간 순이익',
+      data: [10735, 9159, 7583, 6007, 4431, 2855, 1279, -297],
+      backgroundColor: ctx => ctx.raw >= 0 ? '#dbeafe' : '#fee2e2',
+      borderColor: ctx => ctx.raw >= 0 ? '#3b82f6' : '#ef4444',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: { display: true, text: '프리미엄 - 추가구매 횟수별 순이익', font: { size: 13 } },
+      tooltip: { callbacks: { label: ctx => ctx.raw.toLocaleString() + '원' } }
+    },
+    scales: {
+      y: {
+        ticks: { callback: v => (v/1000).toFixed(1) + '천원' },
+        grid: { color: ctx => ctx.tick.value === 0 ? '#333' : '#eee' }
+      }
+    }
+  }
+});
+
+// 6. Uplift chart (시나리오: 라이트 3개월1회/2개월1회/월1회 · 프리미엄 3개월1회/월1회/월1.5회)
+new Chart(document.getElementById('upliftChart'), {
+  type: 'bar',
+  data: {
+    labels: ['비구독(현재)', '라이트\n3개월 1회', '라이트\n2개월 1회', '라이트\n월 1회', '프리미엄\n3개월 1회', '프리미엄\n월 1회', '프리미엄\n월 1.5회'],
+    datasets: [
+      { label: '구독료 수익', data: [0, 46800, 46800, 46800, 118800, 118800, 118800], backgroundColor: pink },
+      { label: '추가구매 매출', data: [52556, 63040, 94560, 189120, 63040, 189120, 283680], backgroundColor: blue }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toLocaleString() + '원' } }
+    },
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, ticks: { callback: v => (v/10000).toFixed(0) + '만원' }, title: { display: true, text: '연간 1인당 기여' } }
+    }
+  }
+});
+
+// 7. Scenario chart (Base 기준: 라이트 2개월 1회, 프리미엄 월 1회)
+new Chart(document.getElementById('scenarioChart'), {
+  type: 'bar',
+  data: {
+    labels: ['1,000명', '3,000명', '5,000명', '10,000명', '15,500명 (본 계획)'],
+    datasets: [
+      { label: '라이트 순증', data: [0.86, 2.58, 4.30, 8.59, 13.32], backgroundColor: pinkLight },
+      { label: '프리미엄 순증', data: [0.08, 0.25, 0.41, 0.82, 1.28], backgroundColor: blue }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top' },
+      title: { display: true, text: '구독자 규모별 연간 순증 매출 (억원) · Base 시나리오', font: { size: 14 } },
+      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(2) + '억원' } }
+    },
+    scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => v + '억원' } } }
+  }
+});
+
+// 8. Visit frequency chart
+new Chart(document.getElementById('visitFreqChart'), {
+  type: 'pie',
+  data: {
+    labels: ['간헐적 방문 (65.9%)', '평균빈도 (15.2%)', '중빈도 (14.6%)', 'BR Lover (4.3%)'],
+    datasets: [{ data: [65.9, 15.2, 14.6, 4.3], backgroundColor: [gray, blue, orange, pink] }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
+  }
+});
+
+// ══════════════════════════════════════
+// Page Navigation
+// ══════════════════════════════════════
+(function() {
+  var pages = document.querySelectorAll('.page');
+  var btnUp = document.getElementById('btnUp');
+  var btnDown = document.getElementById('btnDown');
+  var counter = document.getElementById('pageCounter');
+  var indicator = document.getElementById('pageIndicator');
+  var currentPage = 0;
+  var totalPages = pages.length;
+
+  // Build dot indicators
+  for (var i = 0; i < totalPages; i++) {
+    var dot = document.createElement('button');
+    dot.className = 'page-dot' + (i === 0 ? ' active' : '');
+    dot.dataset.page = i;
+    dot.setAttribute('aria-label', '페이지 ' + (i + 1));
+    indicator.appendChild(dot);
+  }
+
+  function updateUI(idx) {
+    currentPage = idx;
+    counter.textContent = (idx + 1) + ' / ' + totalPages;
+    btnUp.disabled = idx === 0;
+    btnDown.disabled = idx === totalPages - 1;
+    var dots = indicator.querySelectorAll('.page-dot');
+    dots.forEach(function(d, j) { d.classList.toggle('active', j === idx); });
+  }
+
+  function goToPage(idx) {
+    if (idx < 0 || idx >= totalPages) return;
+    pages[idx].scrollIntoView({ behavior: 'smooth' });
+    updateUI(idx);
+  }
+
+  btnUp.addEventListener('click', function() { goToPage(currentPage - 1); });
+  btnDown.addEventListener('click', function() { goToPage(currentPage + 1); });
+
+  // Dot click
+  indicator.addEventListener('click', function(e) {
+    if (e.target.classList.contains('page-dot')) {
+      goToPage(parseInt(e.target.dataset.page));
+    }
+  });
+
+  // Keyboard: PageDown, PageUp, ArrowDown, ArrowUp
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'PageDown' || (e.key === 'ArrowDown' && e.altKey)) {
+      e.preventDefault();
+      goToPage(currentPage + 1);
+    } else if (e.key === 'PageUp' || (e.key === 'ArrowUp' && e.altKey)) {
+      e.preventDefault();
+      goToPage(currentPage - 1);
+    }
+  });
+
+  // Track current page on scroll (snap changes)
+  var scrollObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        var idx = parseInt(entry.target.id.replace('page-', ''));
+        updateUI(idx);
+      }
+    });
+  }, { threshold: 0.5 });
+  pages.forEach(function(p) { scrollObserver.observe(p); });
+
+  updateUI(0);
+})();
+</script>
+</body>
+</html>
